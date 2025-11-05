@@ -1,0 +1,17 @@
+*.js
+!jest.config.js
+*.d.ts
+node_modules
+tsconfig.tsbuildinfo
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+dist/
+build/
+
+
+# Node modules and dependencies
+node_modules/
+package-lock.json
+yarn.lock
