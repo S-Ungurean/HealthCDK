@@ -35,7 +35,7 @@ export class DevStack extends cdk.Stack {
       description: 'Security group for dev EC2 instance',
     });
 
-    sg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'Allow SSH');
+    //sg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'Allow SSH');
     sg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(5173), 'Allow frontend access');
     
     const instanceRole = new iam.Role(this, 'DevInstanceRole', {
