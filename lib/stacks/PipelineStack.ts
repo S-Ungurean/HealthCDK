@@ -7,6 +7,8 @@ import { Construct } from 'constructs';
 import { DevStack } from './DevStack';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as fs from 'fs';
+import * as path from 'path';
 
 interface PipelineStackProps extends StackProps {
   deployBucketName: string;
@@ -77,6 +79,13 @@ export class PipelineStack extends Stack {
       actions: ['ssm:SendCommand', 'ssm:GetCommandInvocation', 'ssm:ListCommands', 'ssm:ListCommandInvocations'],
       resources: ['*'],
     }));
+    deployProject.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['s3:PutObject', 's3:GetObject', 's3:ListBucket'],
+      resources: [
+        `arn:aws:s3:::${deployBucketName}`,
+        `arn:aws:s3:::${deployBucketName}/*`
+      ],
+    }));
     pipeline.addStage({ stageName: 'DeployToDev' }).addAction(new cpactions.CodeBuildAction({
       actionName: 'Deploy_DockerCompose',
       project: deployProject,
@@ -125,7 +134,6 @@ export class PipelineStack extends Stack {
           build: {
             commands: [
               'set -e',
-
               'echo "==== CLEANING WORKSPACE ===="',
               'rm -rf /tmp/build-artifacts || true',
               'mkdir -p /tmp/build-artifacts/workspace',
@@ -137,6 +145,10 @@ export class PipelineStack extends Stack {
               'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthWorkspace.git .',
               'ls',
               // Submodules inside workspace/
+              'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthCDK.git HealthCDK',
+              'cd HealthCDK',
+              'aws s3 cp resources/frontend.conf s3://$DEPLOY_BUCKET_NAME/frontend.conf',
+              'cd ..',
               'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthDAO.git HealthDAO',
               'pwd',
               'ls',
@@ -192,6 +204,15 @@ export class PipelineStack extends Stack {
             `cat > commands.json <<EOF
 {
   "commands": [
+    // ---------- Prepare NGINX with SSL ----------
+    "sudo certbot certonly --webroot -w /var/www/certbot -d dev.aegiscan.app --agree-tos --register-unsafely-without-email --non-interactive",
+    "aws s3 cp s3://my-deploy-bucket/frontend.conf /etc/nginx/conf.d/frontend.conf",
+    "sudo nginx -t",
+    "sudo systemctl reload nginx",
+
+    "(crontab -l 2>/dev/null; echo \\"0 0,12 * * * /usr/bin/certbot renew --quiet --post-hook 'systemctl reload nginx'\\" ) | crontab -"
+
+    // ---------- Docker Compose Deployment ----------
     "sudo curl -SL https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose",
     "sudo chmod +x /usr/local/bin/docker-compose",
     "docker-compose --version",
@@ -206,7 +227,7 @@ export class PipelineStack extends Stack {
     "docker ps --format '{{.Names}} {{.Status}}' | grep -q healthai || exit 1",
     "docker ps --format '{{.Names}} {{.Status}}' | grep -q healthfe || exit 1",
     "docker ps --format '{{.Names}} {{.Status}}' | grep -q healthpy || exit 1",
-    "docker ps --format '{{.Names}} {{.Status}}' | grep -q cassandra || exit 1"
+    "docker ps --format '{{.Names}} {{.Status}}' | grep -q cassandra || exit 1",
   ]
 }
 EOF`,

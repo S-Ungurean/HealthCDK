@@ -28,6 +28,12 @@ export class DevStack extends cdk.Stack {
       ],
     });
 
+    // Elastic IP for dev instance
+    const eip = new ec2.CfnEIP(this, 'DevInstanceEIP', {
+      domain: 'vpc',
+      tags: [{ key: 'Name', value: 'HealthDevInstanceEIP' }],
+    });
+
     // Security group allowing SSH for deploy pipeline
     const sg = new ec2.SecurityGroup(this, 'DevInstanceSG', {
       vpc,
@@ -35,8 +41,10 @@ export class DevStack extends cdk.Stack {
       description: 'Security group for dev EC2 instance',
     });
 
-    //sg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'Allow SSH');
-    sg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(5173), 'Allow frontend access');
+    sg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'Allow SSH');
+    sg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80), 'Allow HTTP traffic');
+    sg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443), 'Allow HTTPS traffic');
+    //sg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(5173), 'Allow frontend access');
     
     const instanceRole = new iam.Role(this, 'DevInstanceRole', {
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
@@ -86,26 +94,68 @@ export class DevStack extends cdk.Stack {
         },
       ],
     });
+
+    new ec2.CfnEIPAssociation(this, "DevInstanceEIPAssoc", {
+      eip: eip.ref,
+      instanceId: this.devInstance.instanceId,
+    });
+
     Tags.of(this.devInstance).add('HealthEnv', 'dev');
 
-    // Prepare EBS volume & move Docker storage to /data/docker
     this.devInstance.userData.addCommands(
-      'set -e',
-      'sudo mkfs -t xfs /dev/sdh || true',
-      'sudo mkdir -p /data',
-      'echo "/dev/sdh /data xfs defaults,nofail 0 2" | sudo tee -a /etc/fstab',
-      'sudo mount -a || true',
-      'sudo amazon-linux-extras enable docker',
-      'sudo yum install -y docker python3-pip jq || true',
-      'sudo systemctl enable --now docker || true',
-      'sudo pip3 install docker-compose || true',
-      'sudo usermod -aG docker ec2-user || true',
-      'sudo systemctl stop docker || true',
-      'sudo mkdir -p /data/docker',
-      'sudo rsync -aP /var/lib/docker/ /data/docker/ || true',
-      "sudo sed -i 's|^ExecStart=.*|ExecStart=/usr/bin/dockerd --data-root=/data/docker|' /usr/lib/systemd/system/docker.service || true",
-      'sudo systemctl daemon-reload || true',
-      'sudo systemctl start docker || true'
+      "set -xe",
+
+      // ---------- Disk Setup ----------
+      "sudo mkfs -t xfs /dev/sdh || true",
+      "sudo mkdir -p /data",
+      "echo '/dev/sdh /data xfs defaults,nofail 0 2' | sudo tee -a /etc/fstab",
+      "sudo mount -a || true",
+
+      // ---------- System Update ----------
+      "sudo yum update -y",
+
+      // ---------- Docker Setup ----------
+      "sudo amazon-linux-extras enable docker",
+      "sudo yum install -y docker python3-pip jq",
+      "sudo systemctl enable --now docker",
+      "sudo pip3 install docker-compose",
+      "sudo usermod -aG docker ec2-user",
+
+      // Move Docker data root
+      "sudo systemctl stop docker",
+      "sudo mkdir -p /data/docker",
+      "sudo rsync -aP /var/lib/docker/ /data/docker/ || true",
+      "sudo sed -i 's|^ExecStart=.*|ExecStart=/usr/bin/dockerd --data-root=/data/docker|' /usr/lib/systemd/system/docker.service",
+      "sudo systemctl daemon-reload",
+      "sudo systemctl start docker",
+
+      // ---------- NGINX Setup ----------
+      "sudo amazon-linux-extras enable nginx1",
+      "sudo amazon-linux-extras install -y nginx1",
+      "sudo yum install -y openssl",
+      "sudo mkdir -p /etc/nginx/conf.d",
+
+      // ---------- Prepare webroot for Certbot ----------
+      "sudo mkdir -p /var/www/certbot",
+      "sudo chown -R ec2-user:ec2-user /var/www/certbot",
+
+      // Write minimal HTTP-only config for Certbot first
+      `sudo tee /etc/nginx/conf.d/frontend.conf << 'EOF'
+server {
+    listen 80;
+    server_name dev.aegiscan.app;
+    root /var/www/html;
+}
+EOF`,
+
+      // Enable and start NGINX (HTTP only)
+      "sudo systemctl enable nginx",
+      "sudo systemctl start nginx",
+
+      // ---------- Certbot Setup ----------
+      "sudo amazon-linux-extras enable epel",
+      "sudo yum install -y epel-release",
+      "sudo yum install -y certbot",
     );
   }
 
