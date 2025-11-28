@@ -273,7 +273,7 @@ EOF`,
     "docker ps --format '{{.Names}} {{.Status}}' | grep -q healthpy || exit 1",
     "docker ps --format '{{.Names}} {{.Status}}' | grep -q cassandra || exit 1",
     "cd /home/ec2-user/workspace",
-    "cd HealthIntegrationTests && chmod +x gradlew && ./gradlew test --tests "org.dev.HealthDevBEIntegrationTestSuite")",
+    "cd HealthIntegrationTests && chmod +x gradlew && ./gradlew test --tests \"org.dev.HealthDevBEIntegrationTestSuite\""
   ]
 }
 EOF`,
