@@ -211,7 +211,7 @@ export class PipelineStack extends Stack {
     "echo test | sudo tee /var/www/certbot/.well-known/acme-challenge/testfile",
     "curl http://dev.aegiscan.app/.well-known/acme-challenge/testfile",
     "bash -c 'set -e; sudo certbot certonly --webroot -w /var/www/certbot -d dev.aegiscan.app --agree-tos --register-unsafely-without-email --non-interactive'",
-    "bash -c 'set -e; aws s3 cp s3://$DEPLOY_BUCKET_NAME/ratelimits.conf /etc/nginx/conf.d/ratelimits.conf'"
+    "bash -c 'set -e; aws s3 cp s3://$DEPLOY_BUCKET_NAME/ratelimits.conf /etc/nginx/conf.d/ratelimits.conf'",
     "bash -c 'set -e; aws s3 cp s3://$DEPLOY_BUCKET_NAME/frontend.conf /etc/nginx/conf.d/frontend.conf'",
     "bash -c 'set -e; sudo nginx -t'",
     "sudo systemctl stop nginx",
