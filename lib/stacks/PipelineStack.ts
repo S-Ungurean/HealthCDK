@@ -204,15 +204,13 @@ export class PipelineStack extends Stack {
             `cat > commands.json <<EOF
 {
   "commands": [
-    // ---------- Prepare NGINX with SSL ----------
     "sudo certbot certonly --webroot -w /var/www/certbot -d dev.aegiscan.app --agree-tos --register-unsafely-without-email --non-interactive",
-    "aws s3 cp s3://my-deploy-bucket/frontend.conf /etc/nginx/conf.d/frontend.conf",
+    "aws s3 cp s3://$DEPLOY_BUCKET_NAME/frontend.conf /etc/nginx/conf.d/frontend.conf",
     "sudo nginx -t",
     "sudo systemctl reload nginx",
 
-    "(crontab -l 2>/dev/null; echo \\"0 0,12 * * * /usr/bin/certbot renew --quiet --post-hook 'systemctl reload nginx'\\" ) | crontab -"
+    "(crontab -l 2>/dev/null; echo \\"0 0,12 * * * /usr/bin/certbot renew --quiet --post-hook 'systemctl reload nginx'\\" ) | crontab -",
 
-    // ---------- Docker Compose Deployment ----------
     "sudo curl -SL https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose",
     "sudo chmod +x /usr/local/bin/docker-compose",
     "docker-compose --version",
@@ -227,7 +225,7 @@ export class PipelineStack extends Stack {
     "docker ps --format '{{.Names}} {{.Status}}' | grep -q healthai || exit 1",
     "docker ps --format '{{.Names}} {{.Status}}' | grep -q healthfe || exit 1",
     "docker ps --format '{{.Names}} {{.Status}}' | grep -q healthpy || exit 1",
-    "docker ps --format '{{.Names}} {{.Status}}' | grep -q cassandra || exit 1",
+    "docker ps --format '{{.Names}} {{.Status}}' | grep -q cassandra || exit 1"
   ]
 }
 EOF`,
