@@ -4,11 +4,7 @@ import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as cpactions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { Construct } from 'constructs';
-import { DevStack } from './DevStack';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as fs from 'fs';
-import * as path from 'path';
 
 interface PipelineStackProps extends StackProps {
   deployBucketName: string;
@@ -262,33 +258,26 @@ EOF`,
         version: '0.2',
         phases: {
           install: {
-          commands: [
+            commands: [
+              'echo Installing JDK21 + git...',
+              'yum update -y || true',
+              'amazon-linux-extras enable corretto21 || true',
+              'yum install -y java-21-amazon-corretto-devel git tar jq || true'
+            ],
+          },
+          build: {
+            commands: [
             'set -e',
-            'echo "Preparing SSM command JSON file..."',
+            //'echo "Preparing SSM command JSON file..."',
             // Use cat <<EOF for clean multi-line JSON
-            `cat > commands.json <<EOF
-{
-  "commands": [
-    "echo 'Checking if docker containers are running...'",
-    "docker ps --format '{{.Names}} {{.Status}}' | grep -q healthai || exit 1",
-    "docker ps --format '{{.Names}} {{.Status}}' | grep -q healthfe || exit 1",
-    "docker ps --format '{{.Names}} {{.Status}}' | grep -q healthpy || exit 1",
-    "docker ps --format '{{.Names}} {{.Status}}' | grep -q cassandra || exit 1",
-    "cd /home/ec2-user/workspace",
-    "cd HealthIntegrationTests && chmod +x gradlew && ./gradlew test --tests \\\"org.dev.HealthDevBEIntegrationTestSuite\\\""
-  ]
-}
-EOF`,
-            'echo "Sending SSM command to deploy workspace..."',
-            'COMMAND_ID=$(aws ssm send-command --targets "Key=tag:HealthEnv,Values=dev" --document-name "AWS-RunShellScript" --comment "Run Dev Integration Tests" --parameters file://commands.json --timeout-seconds 1800 --query "Command.CommandId" --output text)',
-            'echo "SSM command sent, polling for status..."',
-            // Poll for SSM command completion
-            'for i in $(seq 1 20); do STATUS=$(aws ssm list-command-invocations --command-id "$COMMAND_ID" --details --query "CommandInvocations[0].Status" --output text); echo "Current SSM status: $STATUS"; if [ "$STATUS" = "Success" ]; then echo "✅ Deployment completed"; exit 0; fi; if [ "$STATUS" = "Failed" ]; then echo "❌ Deployment failed"; exit 1; fi; sleep 30; done; echo "⚠️ Deployment timed out waiting for SSM command to finish"; exit 1'
-
-          ],
+            'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthIntegrationTests.git HealthIntegrationTests',
+            'cd HealthIntegrationTests && chmod +x gradlew && ./gradlew test --tests org.dev.HealthDevBEIntegrationTestSuite'
+            ],
+          } 
         },
-      },
-        artifacts: { files: [] },
+        artifacts: {
+          files: [],
+        },
       }),
     });
   }
