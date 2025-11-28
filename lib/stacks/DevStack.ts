@@ -136,21 +136,27 @@ export class DevStack extends cdk.Stack {
       "sudo mkdir -p /etc/nginx/conf.d",
 
       // ---------- Prepare webroot for Certbot ----------
-      "sudo mkdir -p /var/www/certbot",
+      "sudo mkdir -p /var/www/certbot/.well-known/acme-challenge",
       "sudo chown -R ec2-user:ec2-user /var/www/certbot",
+      "sudo chmod -R 755 /var/www/certbot",
 
       // Write minimal HTTP-only config for Certbot first
       `sudo tee /etc/nginx/conf.d/frontend.conf << 'EOF'
 server {
     listen 80;
     server_name dev.aegiscan.app;
-    root /var/www/html;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot/;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
 }
 EOF`,
 
-      // Enable and start NGINX (HTTP only)
       "sudo systemctl enable nginx",
-      "sudo systemctl start nginx",
 
       // ---------- Certbot Setup ----------
       "sudo amazon-linux-extras enable epel",

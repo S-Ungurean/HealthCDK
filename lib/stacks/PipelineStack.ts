@@ -204,10 +204,16 @@ export class PipelineStack extends Stack {
             `cat > commands.json <<EOF
 {
   "commands": [
-    "sudo certbot certonly --webroot -w /var/www/certbot -d dev.aegiscan.app --agree-tos --register-unsafely-without-email --non-interactive",
-    "aws s3 cp s3://$DEPLOY_BUCKET_NAME/frontend.conf /etc/nginx/conf.d/frontend.conf",
+    "sudo systemctl stop nginx",
+    "sudo systemctl start nginx",
     "sudo nginx -t",
-    "sudo systemctl reload nginx",
+    "echo test | sudo tee /var/www/certbot/.well-known/acme-challenge/testfile",
+    "curl http://dev.aegiscan.app/.well-known/acme-challenge/testfile",
+    "bash -c 'set -e; sudo certbot certonly --webroot -w /var/www/certbot -d dev.aegiscan.app --agree-tos --register-unsafely-without-email --non-interactive'",
+    "bash -c 'set -e; aws s3 cp s3://$DEPLOY_BUCKET_NAME/frontend.conf /etc/nginx/conf.d/frontend.conf'",
+    "bash -c 'set -e; sudo nginx -t'",
+    "sudo systemctl stop nginx",
+    "sudo systemctl start nginx",
 
     "(crontab -l 2>/dev/null; echo \\"0 0,12 * * * /usr/bin/certbot renew --quiet --post-hook 'systemctl reload nginx'\\" ) | crontab -",
 
