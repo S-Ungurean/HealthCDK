@@ -187,7 +187,8 @@ EOF`,
       actions: ['s3:GetObject', 's3:PutObject'],
       resources: [
         'arn:aws:s3:::ai-health-model-storage/*',
-        'arn:aws:s3:::aihealthinfra-modelsresults/*'
+        'arn:aws:s3:::aihealthinfra-modelsresults/*',
+        'arn:aws:s3:::aegiscaninputs/*'
       ],
     }));
   }
