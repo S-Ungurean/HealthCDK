@@ -4,10 +4,14 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam'; 
 import { Tags } from 'aws-cdk-lib';
 
+export interface DevStackProps extends cdk.StackProps {
+  sorterLambdaArn: string;
+}
+
 export class DevStack extends cdk.Stack {
   public readonly devInstance: ec2.Instance;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: DevStackProps) {
     super(scope, id, props);
 
     // VPC for dev environment (2 AZs to keep networking simple)
@@ -51,7 +55,7 @@ export class DevStack extends cdk.Stack {
     });
     instanceRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'));
     instanceRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonS3ReadOnlyAccess'));
-    this.addPoliciesToInstanceRole(instanceRole);
+    this.addPoliciesToInstanceRole(instanceRole, props.sorterLambdaArn);
 
     // Add VPC endpoints for SSM and S3, this will allow the instance to be managed via SSM without public IP
     vpc.addInterfaceEndpoint('SSMEndpoint', {
@@ -165,7 +169,13 @@ EOF`,
     );
   }
 
-  private addPoliciesToInstanceRole(role: iam.Role) {
+  private addPoliciesToInstanceRole(role: iam.Role, sorterLambdaArn: string) {
+
+    role.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['lambda:InvokeFunction'],
+      resources: [sorterLambdaArn],
+    }));
 
     role.addToPolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
