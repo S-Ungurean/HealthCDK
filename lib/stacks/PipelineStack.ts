@@ -38,7 +38,7 @@ export class PipelineStack extends Stack {
       })
     );
 
-    ['HealthBEService','HealthDAO','HealthSAO','HealthFEService','HealthInferenceService','HealthCDK','HealthIntegrationTests'].forEach((repo) => {
+    ['HealthBEService','HealthDAO','HealthSAO','HealthFEService','HealthInferenceService','HealthCDK','HealthIntegrationTests','MetricsLibrary'].forEach((repo) => {
       const artifact = new codepipeline.Artifact(`${repo}`);
       repoArtifacts[repo] = artifact;
       sourceStage.addAction(
@@ -150,6 +150,7 @@ export class PipelineStack extends Stack {
               'pwd',
               'ls',
               'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthSAO.git HealthSAO',
+              'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/MetricsLibrary.git MetricsLibrary',
               'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthBEService.git HealthBEService',
               'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthFEService.git HealthFEService',
               'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthInferenceService.git HealthInferenceService',
@@ -161,6 +162,9 @@ export class PipelineStack extends Stack {
 
               'echo "==== BUILDING SAO ===="',
               '(cd HealthSAO && chmod +x gradlew && ./gradlew clean build -x test)',
+
+              'echo "==== BUILDING METRICS LIBRARY ===="',
+              '(cd MetricsLibrary && chmod +x gradlew && ./gradlew clean build -x test)',
 
               'echo "==== BUILDING BACKEND ===="',
               '(cd HealthBEService && chmod +x gradlew && ./gradlew clean build -x test)',

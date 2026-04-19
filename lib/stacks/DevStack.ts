@@ -181,7 +181,8 @@ EOF`,
       effect: iam.Effect.ALLOW,
       actions: ['secretsmanager:GetSecretValue'],
       resources: [
-        'arn:aws:secretsmanager:us-east-1:774814055379:secret:HealthAI-DevServerAPIKey-*'
+        'arn:aws:secretsmanager:us-east-1:774814055379:secret:HealthAI-DevServerAPIKey-*',
+        'arn:aws:secretsmanager:us-east-1:774814055379:secret:HealthAI-GrafanaCloud-*'
       ],
     }));
 
