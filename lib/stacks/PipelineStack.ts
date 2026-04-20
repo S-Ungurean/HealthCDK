@@ -137,24 +137,25 @@ export class PipelineStack extends Stack {
               'pwd',
               'ls',
               'echo "==== CLONING REPOSITORIES ===="',
+              'git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"',
               // Workspace root folder
-              'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthWorkspace.git .',
+              'git clone --depth 1 https://github.com/S-Ungurean/HealthWorkspace.git .',
               'ls',
               // Submodules inside workspace/
-              'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthCDK.git HealthCDK',
+              'git clone --depth 1 https://github.com/S-Ungurean/HealthCDK.git HealthCDK',
               'cd HealthCDK',
               'aws s3 cp resources/frontend.conf s3://$DEPLOY_BUCKET_NAME/frontend.conf',
               'aws s3 cp resources/ratelimits.conf s3://$DEPLOY_BUCKET_NAME/ratelimits.conf',
               'cd ..',
-              'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthDAO.git HealthDAO',
+              'git clone --depth 1 https://github.com/S-Ungurean/HealthDAO.git HealthDAO',
               'pwd',
               'ls',
-              'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthSAO.git HealthSAO',
-              'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/MetricsLibrary.git MetricsLibrary',
-              'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthBEService.git HealthBEService',
-              'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthFEService.git HealthFEService',
-              'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthInferenceService.git HealthInferenceService',
-              'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthIntegrationTests.git HealthIntegrationTests',
+              'git clone --depth 1 https://github.com/S-Ungurean/HealthSAO.git HealthSAO',
+              'git clone --depth 1 https://github.com/S-Ungurean/MetricsLibrary.git MetricsLibrary',
+              'git clone --depth 1 https://github.com/S-Ungurean/HealthBEService.git HealthBEService',
+              'git clone --depth 1 https://github.com/S-Ungurean/HealthFEService.git HealthFEService',
+              'git clone --depth 1 https://github.com/S-Ungurean/HealthInferenceService.git HealthInferenceService',
+              'git clone --depth 1 https://github.com/S-Ungurean/HealthIntegrationTests.git HealthIntegrationTests',
               'pwd',
               'ls',
               'echo "==== BUILDING DAO ===="',
@@ -258,6 +259,12 @@ EOF`,
         buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_CORETTO_8, // Amazon Linux 2 with yum
         privileged: true,
       },
+      environmentVariables: {
+        GITHUB_TOKEN: {
+          type: codebuild.BuildEnvironmentVariableType.SECRETS_MANAGER,
+          value: 'GITHUB_TOKEN',
+        },
+      },
       buildSpec: codebuild.BuildSpec.fromObject({
         version: '0.2',
         phases: {
@@ -272,12 +279,11 @@ EOF`,
           build: {
             commands: [
             'set -e',
-            //'echo "Preparing SSM command JSON file..."',
-            // Use cat <<EOF for clean multi-line JSON
-            'git clone --depth 1 https://$GITHUB_TOKEN@github.com/S-Ungurean/HealthIntegrationTests.git HealthIntegrationTests',
+            'git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"',
+            'git clone --depth 1 https://github.com/S-Ungurean/HealthIntegrationTests.git HealthIntegrationTests',
             'cd HealthIntegrationTests && chmod +x gradlew && ./gradlew test --tests org.dev.HealthDevBEIntegrationTestSuite'
             ],
-          } 
+          }
         },
         artifacts: {
           files: [],
